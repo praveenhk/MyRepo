@@ -4,9 +4,40 @@
 * Description
 */
 
-var flapperNewsApp = angular.module('flapperNews', ['ui.router']);
+angular.module('flapperNews', ['ui.router'])
 
-flapperNewsApp.controller('MainCtrl', function($scope,posts){
+.config([
+'$stateProvider',
+'$urlRouterProvider',
+function($stateProvider, $urlRouterProvider) {
+
+			$stateProvider
+			.state('home', {
+				url: '/home',
+				templateUrl: '/home.html',
+				controller: 'MainCtrl',
+				resolve: {
+					postPromise: ['posts', function(posts) {
+						return posts.getAll();
+					}]
+				}
+			})
+			
+			.state('posts', {
+				url: '/posts/{id}',
+				templateUrl: '/posts.html',
+				controller: 'PostsCtrl',
+				resolve: {
+					post: ['$stateParams', 'posts', function($stateParams,posts) {
+						return posts.get($stateParams.id);
+					}]
+				}
+			});
+
+		$urlRouterProvider.otherwise('home');
+}])
+
+.controller('MainCtrl', function($scope,posts){
 	$scope.test = 'Hello World';
 	$scope.posts = posts.posts;
 	$scope.addPost = function(){
@@ -26,10 +57,8 @@ flapperNewsApp.controller('MainCtrl', function($scope,posts){
 	$scope.upVote = function(post){
 		post.upvotes += 1;
 	};
-});
-
-
-flapperNewsApp.controller('PostsCtrl',function($scope, $stateParams,posts){
+})
+.controller('PostsCtrl',function($scope, $stateParams,posts){
 	$scope.post = posts.posts[Number($stateParams.id)];
 	$scope.addComment = function (){
 		if($scope.body === '') { return; }
@@ -40,31 +69,18 @@ flapperNewsApp.controller('PostsCtrl',function($scope, $stateParams,posts){
 		  });
 		  $scope.body = '';
 	};
-});
+})
 
 
-flapperNewsApp.config([
-'$stateProvider',
-'$urlRouterProvider',
-function($stateProvider, $urlRouterProvider) {
-
-  $stateProvider
-    .state('home', {
-      url: '/home',
-      templateUrl: '/home.html',
-      controller: 'MainCtrl'
-    });
-    $stateProvider
-    .state('posts', {
-	  url: '/posts/{id}',
-	  templateUrl: '/posts.html',
-	  controller: 'PostsCtrl'
-	});
-
-  $urlRouterProvider.otherwise('home');
-}]);
-
-flapperNewsApp.factory('posts', [function(){
-		o = {posts:[]};
+.factory('posts',['$http', function($http){
+	var o = {
+		posts: []
+	};
+		o.getAll = function() {
+    	return $http.get('/posts').success(function(data){
+      		angular.copy(data, o.posts);
+	    });
+	  };
 		return o;
-	}]);
+	}])
+
